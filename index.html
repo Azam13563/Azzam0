@@ -1,170 +1,232 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="ltr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ناقل الملفات المستقر</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PUBG Mobile Mirror | عاكس ببجي</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { background-color: #09090b; color: #fafafa; font-family: system-ui, sans-serif; }
-        .card { background: #18181b; border: 1px solid #27272a; border-radius: 20px; }
-        .hidden { display: none !important; }
-        #qrcode img { margin: 0 auto; padding: 10px; background: white; border-radius: 12px; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+Arabic:wght@400;700&display=swap');
+        
+        body { 
+            font-family: 'Noto Sans Arabic', sans-serif; 
+            background: #050505; 
+            color: #fff; 
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .gaming-border {
+            border: 2px solid #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+
+        #remote-video {
+            width: 100%;
+            height: 100vh;
+            object-fit: contain; /* للحفاظ على أبعاد شاشة التابلت */
+            background: #000;
+        }
+
+        .stats-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        .btn-glow:hover {
+            box-shadow: 0 0 15px #3b82f6;
+        }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="flex flex-col items-center justify-center">
 
-    <div class="w-full max-w-md card p-8 shadow-2xl">
-        <div class="text-center mb-8">
-            <h1 class="text-2xl font-bold text-blue-500">AirDrop Web Stable</h1>
-            <p class="text-gray-500 text-sm">نقل الملفات بجودة أصلية</p>
-        </div>
+    <!-- شاشة الاختيار -->
+    <div id="selection-view" class="z-50 text-center space-y-8 p-6">
+        <h1 class="text-4xl font-bold tracking-tighter text-blue-500">PUBG <span class="text-white">MIRROR</span></h1>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
+            <!-- وضع البي سي: هو الذي يستقبل العرض -->
+            <button onclick="initPCReceiver()" class="p-8 bg-zinc-900 border border-blue-500/30 rounded-3xl hover:bg-blue-600 transition-all group">
+                <i data-lucide="monitor" class="w-12 h-12 mx-auto mb-4 group-hover:scale-110 transition"></i>
+                <span class="block text-xl font-bold">شاشة العرض (البي سي)</span>
+                <span class="text-xs text-zinc-500 group-hover:text-blue-100 italic">استقبل بث التابلت هنا</span>
+            </button>
 
-        <!-- الخطوة 1 -->
-        <div id="view-step1" class="space-y-4 text-center">
-            <button onclick="initPC()" class="w-full p-4 bg-blue-600 rounded-xl font-bold">هذا هو الكمبيوتر (المستقبل)</button>
-            <button onclick="initMobile()" class="w-full p-4 bg-zinc-800 rounded-xl font-bold">هذا هو التابلت/الجوال (المرسل)</button>
-        </div>
-
-        <!-- شاشة المستقبل -->
-        <div id="view-pc" class="hidden text-center space-y-6">
-            <div id="qrcode" class="flex justify-center min-h-[180px]"></div>
-            <div class="p-3 bg-black/20 rounded-lg border border-white/5">
-                <p class="text-xs text-gray-500">الرمز الخاص بك:</p>
-                <p id="pc-id" class="font-mono text-lg text-blue-400">جاري التحميل...</p>
-            </div>
-            <div id="pc-status" class="text-sm text-yellow-500 animate-pulse">في انتظار الاتصال...</div>
-            <div id="download-zone" class="hidden p-4 bg-green-900/20 border border-green-500/50 rounded-xl">
-                <p class="text-green-400 mb-2">تم استلام الملف!</p>
-                <a id="download-link" class="block w-full py-2 bg-green-600 rounded-lg font-bold">اضغط هنا للحفظ</a>
-            </div>
-        </div>
-
-        <!-- شاشة المرسل -->
-        <div id="view-mobile" class="hidden space-y-4 text-center">
-            <input type="text" id="target-id" placeholder="أدخل رمز الكمبيوتر هنا" class="w-full p-4 bg-zinc-900 border border-zinc-700 rounded-xl text-center">
-            <button id="connect-btn" onclick="connectToPC()" class="w-full p-4 bg-blue-600 rounded-xl font-bold">اتصال</button>
-            
-            <div id="send-zone" class="hidden py-8 border-2 border-dashed border-zinc-700 rounded-xl">
-                <p class="text-green-500 mb-4 font-bold">متصل بالكمبيوتر ✅</p>
-                <input type="file" id="file-input" class="hidden" onchange="startSending(this.files[0])">
-                <button onclick="document.getElementById('file-input').click()" class="px-8 py-3 bg-white text-black rounded-full font-bold">اختر المقطع</button>
-            </div>
-        </div>
-
-        <!-- شاشة التقدم -->
-        <div id="view-progress" class="hidden space-y-4">
-            <div class="flex justify-between font-bold">
-                <span id="prog-label">جاري النقل...</span>
-                <span id="prog-percent">0%</span>
-            </div>
-            <div class="w-full bg-zinc-800 h-4 rounded-full overflow-hidden">
-                <div id="prog-bar" class="bg-blue-500 h-full w-0 transition-all"></div>
-            </div>
+            <!-- وضع التابلت: هو الذي يصور اللعبة -->
+            <button onclick="initTabletSender()" class="p-8 bg-zinc-900 border border-emerald-500/30 rounded-3xl hover:bg-emerald-600 transition-all group">
+                <i data-lucide="tablet" class="w-12 h-12 mx-auto mb-4 group-hover:scale-110 transition"></i>
+                <span class="block text-xl font-bold">بث اللعب (التابلت)</span>
+                <span class="text-xs text-zinc-500 group-hover:text-emerald-100 italic">ابدأ تصوير ببجي من هنا</span>
+            </button>
         </div>
     </div>
 
+    <!-- واجهة البي سي (المستقبل) -->
+    <div id="pc-view" class="hidden text-center space-y-6 p-6">
+        <h2 class="text-2xl font-bold">جاهز لاستقبال البث</h2>
+        <div id="qrcode" class="p-4 bg-white rounded-2xl inline-block shadow-2xl"></div>
+        <p class="text-zinc-400">امسح الكود من التابلت لبدء عرض اللعبة</p>
+        <div id="peer-id-label" class="text-blue-500 font-mono text-sm">Waiting for Peer ID...</div>
+    </div>
+
+    <!-- واجهة التابلت (المرسل) -->
+    <div id="tablet-view" class="hidden text-center space-y-6 p-6">
+        <div class="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto animate-pulse border border-emerald-500">
+            <i data-lucide="cast" class="text-emerald-500 w-10 h-10"></i>
+        </div>
+        <h2 class="text-2xl font-bold">بث شاشة التابلت</h2>
+        <p class="text-zinc-400">بعد الضغط على الزر، اختر "تصوير الشاشة بالكامل"</p>
+        <button id="start-broadcast-btn" class="w-full max-w-xs bg-emerald-600 p-5 rounded-2xl font-bold text-lg shadow-lg btn-glow transition-all">
+            ابدأ بث ببجي الآن
+        </button>
+    </div>
+
+    <!-- واجهة البث المباشر (تظهر على البي سي) -->
+    <div id="live-display" class="hidden fixed inset-0 w-full h-full bg-black">
+        <div class="stats-overlay">
+            <div class="flex items-center gap-2 text-emerald-500 mb-1">
+                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                LIVE STREAMING
+            </div>
+            <div id="fps-counter">60 FPS</div>
+            <div id="latency-display">P2P: < 10ms</div>
+        </div>
+        <video id="remote-video" autoplay playsinline></video>
+        
+        <!-- زر التسجيل على البي سي -->
+        <button id="record-btn" class="absolute bottom-10 right-10 bg-red-600/80 hover:bg-red-600 p-4 rounded-full transition-all group">
+            <i data-lucide="video" class="w-6 h-6 group-hover:scale-125 transition"></i>
+        </button>
+    </div>
+
     <script>
-        let peer, conn, receivedChunks = [], meta = null;
-        const CHUNK_SIZE = 16384 * 2; // 32KB
+        let peer, conn, mediaRecorder, recordedChunks = [];
+        const $ = id => document.getElementById(id);
+        lucide.createIcons();
 
-        function show(id) {
-            ['view-step1', 'view-pc', 'view-mobile', 'view-progress'].forEach(v => document.getElementById(v).classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-        }
+        // --- وضع البي سي (المستقبل) ---
+        function initPCReceiver() {
+            $('selection-view').classList.add('hidden');
+            $('pc-view').classList.remove('hidden');
 
-        function initPC() {
-            show('view-pc');
-            peer = new Peer();
+            peer = new Peer({
+                config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
+            });
+
             peer.on('open', id => {
-                document.getElementById('pc-id').innerText = id;
-                new QRCode(document.getElementById("qrcode"), { text: window.location.href + "?id=" + id, width: 180, height: 180 });
+                $('peer-id-label').innerText = "ID: " + id;
+                const shareURL = window.location.href.split('?')[0] + "?tablet_mode=" + id;
+                new QRCode($("qrcode"), { text: shareURL, width: 200, height: 200 });
             });
-            peer.on('connection', c => {
-                conn = c;
-                document.getElementById('pc-status').innerText = "متصل بالمرسل، في انتظار الملف...";
-                setupConn();
+
+            // عندما يتصل التابلت ويرسل البث
+            peer.on('call', call => {
+                call.answer(); // لا نرسل كاميرا من البي سي
+                call.on('stream', remoteStream => {
+                    $('pc-view').classList.add('hidden');
+                    $('live-display').classList.remove('hidden');
+                    const video = $('remote-video');
+                    video.srcObject = remoteStream;
+                    video.onloadedmetadata = () => video.play();
+                    
+                    // إعداد تسجيل الشاشة على البي سي
+                    setupRecording(remoteStream);
+                });
             });
         }
 
-        function initMobile() {
-            show('view-mobile');
-            peer = new Peer();
-            const urlParams = new URLSearchParams(window.location.search);
-            if(urlParams.has('id')) {
-                document.getElementById('target-id').value = urlParams.get('id');
-                setTimeout(connectToPC, 1000);
+        // --- وضع التابلت (المرسل) ---
+        function initTabletSender() {
+            const params = new URLSearchParams(window.location.search);
+            const targetPCId = params.get('tablet_mode');
+
+            if (!targetPCId) {
+                alert("يرجى مسح الكود من البي سي أولاً!");
+                location.search = "";
+                return;
             }
-        }
 
-        function connectToPC() {
-            const id = document.getElementById('target-id').value;
-            if(!id) return;
-            conn = peer.connect(id, { reliable: true });
-            setupConn();
-        }
+            $('selection-view').classList.add('hidden');
+            $('tablet-view').classList.remove('hidden');
 
-        function setupConn() {
-            conn.on('open', () => {
-                if(document.getElementById('view-mobile').classList.contains('hidden') === false) {
-                    document.getElementById('connect-btn').classList.add('hidden');
-                    document.getElementById('send-zone').classList.remove('hidden');
+            $('start-broadcast-btn').onclick = async () => {
+                try {
+                    // طلب تصوير الشاشة (هنا تبدأ لعب ببجي)
+                    const stream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { 
+                            displaySurface: "monitor",
+                            frameRate: { ideal: 60, max: 60 },
+                            width: { ideal: 1920 }
+                        },
+                        audio: {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false
+                        }
+                    });
+
+                    peer = new Peer();
+                    peer.on('open', () => {
+                        // الاتصال بالبي سي وإرسال البث
+                        peer.call(targetPCId, stream);
+                        $('start-broadcast-btn').innerText = "جاري البث الآن...";
+                        $('start-broadcast-btn').classList.replace('bg-emerald-600', 'bg-zinc-700');
+                    });
+
+                    // إذا توقف تصوير الشاشة
+                    stream.getVideoTracks()[0].onended = () => location.reload();
+
+                } catch (err) {
+                    alert("يجب السماح بتصوير الشاشة لبث اللعبة.");
                 }
-            });
-
-            conn.on('data', data => {
-                if(data.type === 'start') {
-                    meta = data;
-                    receivedChunks = [];
-                    show('view-progress');
-                    document.getElementById('prog-label').innerText = "يتم الاستقبال...";
-                } else if (data.type === 'end') {
-                    const blob = new Blob(receivedChunks);
-                    const url = URL.createObjectURL(blob);
-                    show('view-pc');
-                    document.getElementById('pc-status').innerText = "اكتمل الاستلام!";
-                    document.getElementById('download-zone').classList.remove('hidden');
-                    const dl = document.getElementById('download-link');
-                    dl.href = url;
-                    dl.download = meta.name;
-                    // محاولة تحميل تلقائي
-                    dl.click();
-                } else {
-                    receivedChunks.push(data);
-                    let p = Math.min(100, Math.round((receivedChunks.length * CHUNK_SIZE / meta.size) * 100));
-                    document.getElementById('prog-bar').style.width = p + '%';
-                    document.getElementById('prog-percent').innerText = p + '%';
-                }
-            });
+            };
         }
 
-        function startSending(file) {
-            if(!file) return;
-            show('view-progress');
-            document.getElementById('prog-label').innerText = "يتم الإرسال الآن...";
-            conn.send({ type: 'start', name: file.name, size: file.size });
-
-            let offset = 0;
-            const reader = new FileReader();
-            reader.onload = e => {
-                conn.send(e.target.result);
-                offset += e.target.result.byteLength;
-                let p = Math.min(100, Math.round((offset / file.size) * 100));
-                document.getElementById('prog-bar').style.width = p + '%';
-                document.getElementById('prog-percent').innerText = p + '%';
-                if(offset < file.size) readNext();
-                else { conn.send({ type: 'end' }); alert("تم إرسال الملف بالكامل!"); location.reload(); }
+        // --- وظائف التسجيل على البي سي ---
+        function setupRecording(stream) {
+            let options = { mimeType: 'video/webm; codecs=vp9' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/mp4' };
+            }
+            
+            mediaRecorder = new MediaRecorder(stream, options);
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: options.mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `PUBG_Clip_${Date.now()}.webm`;
+                a.click();
+                recordedChunks = [];
             };
 
-            function readNext() {
-                const slice = file.slice(offset, offset + CHUNK_SIZE);
-                reader.readAsArrayBuffer(slice);
-            }
-            readNext();
+            $('record-btn').onclick = () => {
+                if (mediaRecorder.state === "inactive") {
+                    mediaRecorder.start();
+                    $('record-btn').classList.add('bg-red-500', 'animate-pulse');
+                } else {
+                    mediaRecorder.stop();
+                    $('record-btn').classList.remove('bg-red-500', 'animate-pulse');
+                }
+            };
         }
+
+        // التفعيل التلقائي عند مسح الـ QR
+        window.onload = () => {
+            if (new URLSearchParams(window.location.search).has('tablet_mode')) {
+                initTabletSender();
+            }
+        };
     </script>
 </body>
 </html>
