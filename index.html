@@ -2,577 +2,222 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AirDrop Web - Zero Loss P2P Transfer</title>
-    
-    <!-- Tailwind CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirDrop Web - High Speed P2P</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
-                    },
-                    colors: {
-                        apple: {
-                            dark: '#000000',
-                            card: '#1c1c1e',
-                            border: '#38383a',
-                            blue: '#0a84ff',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- PeerJS for WebRTC -->
+    <!-- مكتبات الربط والنقل -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    
-    <!-- QRCode.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        /* Apple-esque scrollbar & utilities */
-        body {
-            background-color: theme('colors.apple.dark');
-            color: white;
-            -webkit-font-smoothing: antialiased;
-        }
-        .glass-panel {
-            background: rgba(28, 28, 30, 0.6);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .hide { display: none !important; }
-        
-        /* Drag and drop pulse animation */
-        @keyframes pulse-border {
-            0% { border-color: rgba(10, 132, 255, 0.4); }
-            50% { border-color: rgba(10, 132, 255, 1); }
-            100% { border-color: rgba(10, 132, 255, 0.4); }
-        }
-        .drag-active {
-            animation: pulse-border 2s infinite;
-            background: rgba(10, 132, 255, 0.05);
-        }
+        body { background-color: #000; color: #fff; font-family: -apple-system, sans-serif; }
+        .glass { background: rgba(28, 28, 30, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+        .hidden { display: none !important; }
+        #qrcode img { margin: 0 auto; border-radius: 12px; border: 8px solid white; }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4 selection:bg-apple-blue selection:text-white">
+<body class="min-h-screen flex items-center justify-center p-4">
 
-    <!-- App Container -->
-    <main class="w-full max-w-md mx-auto glass-panel rounded-3xl p-6 shadow-2xl relative overflow-hidden transition-all duration-500" id="app-container">
-        
+    <div id="main-card" class="w-full max-w-md glass rounded-[2rem] p-8 shadow-2xl">
         <!-- Header -->
-        <header class="flex items-center justify-between mb-8">
-            <div class="flex items-center gap-2">
-                <i data-lucide="zap" class="text-apple-blue w-6 h-6"></i>
-                <h1 class="text-xl font-semibold tracking-tight">AirDrop Web</h1>
+        <div class="flex items-center gap-3 mb-8">
+            <div class="bg-blue-600 p-2 rounded-lg">
+                <i data-lucide="zap" class="w-6 h-6"></i>
             </div>
-            <button id="btn-back" class="hide text-gray-400 hover:text-white transition-colors">
-                <i data-lucide="x-circle" class="w-6 h-6"></i>
-            </button>
-        </header>
+            <h1 class="text-2xl font-bold tracking-tight">AirDrop Web</h1>
+        </div>
 
-        <!-- View 1: Home (Select Role) -->
-        <div id="view-home" class="flex flex-col gap-4 fade-in">
-            <p class="text-gray-400 text-sm mb-2 text-center">Select your device role</p>
-            <button id="btn-role-receive" class="flex items-center gap-4 p-4 rounded-2xl bg-apple-card border border-apple-border hover:bg-gray-800 transition-all active:scale-95">
-                <div class="p-3 bg-blue-500/10 text-apple-blue rounded-xl">
-                    <i data-lucide="monitor-down" class="w-6 h-6"></i>
-                </div>
+        <!-- Start View -->
+        <div id="view-start" class="space-y-4">
+            <button onclick="startReceiver()" class="w-full flex items-center gap-4 p-5 rounded-2xl bg-[#1c1c1e] border border-white/10 hover:bg-white/5 transition-all">
+                <i data-lucide="monitor-down" class="text-blue-500 w-8 h-8"></i>
                 <div class="text-left">
-                    <h2 class="font-medium text-lg">Receive File</h2>
-                    <p class="text-gray-400 text-sm">I am the PC/Receiver</p>
+                    <div class="font-bold">المستقبل (الكمبيوتر)</div>
+                    <div class="text-sm text-gray-400">Receive File</div>
                 </div>
             </button>
-
-            <button id="btn-role-send" class="flex items-center gap-4 p-4 rounded-2xl bg-apple-card border border-apple-border hover:bg-gray-800 transition-all active:scale-95">
-                <div class="p-3 bg-green-500/10 text-green-500 rounded-xl">
-                    <i data-lucide="smartphone" class="w-6 h-6"></i>
-                </div>
+            <button onclick="startSender()" class="w-full flex items-center gap-4 p-5 rounded-2xl bg-[#1c1c1e] border border-white/10 hover:bg-white/5 transition-all">
+                <i data-lucide="smartphone" class="text-green-500 w-8 h-8"></i>
                 <div class="text-left">
-                    <h2 class="font-medium text-lg">Send File</h2>
-                    <p class="text-gray-400 text-sm">I am the Mobile/Sender</p>
+                    <div class="font-bold">المرسل (الجوال)</div>
+                    <div class="text-sm text-gray-400">Send File</div>
                 </div>
             </button>
         </div>
 
-        <!-- View 2: Receiver Waiting -->
-        <div id="view-receive" class="hide flex-col items-center text-center fade-in">
-            <div class="mb-6 p-4 bg-white rounded-2xl shadow-lg relative">
+        <!-- Receiver View (QR Code) -->
+        <div id="view-receive" class="hidden text-center space-y-6">
+            <div id="qr-container" class="bg-white p-4 inline-block rounded-3xl mx-auto">
                 <div id="qrcode"></div>
-                <!-- Loading overlay for QR -->
-                <div id="qr-loading" class="absolute inset-0 bg-white/80 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                    <i data-lucide="loader-2" class="w-8 h-8 text-black animate-spin"></i>
-                </div>
+                <div id="status-text" class="text-black text-xs mt-2 font-mono">جاري إنشاء الاتصال...</div>
             </div>
-            <h2 class="text-xl font-semibold mb-2">Ready to Receive</h2>
-            <p class="text-gray-400 text-sm mb-6">Scan this QR code with your mobile device to connect instantly.</p>
-            
-            <div class="w-full p-4 bg-apple-card rounded-xl border border-apple-border flex items-center justify-between">
-                <div class="text-left">
-                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Your Peer ID</p>
-                    <p id="peer-id-display" class="font-mono text-sm select-all">Generating...</p>
-                </div>
-                <button id="btn-copy-id" class="text-apple-blue hover:text-blue-400 p-2">
-                    <i data-lucide="copy" class="w-5 h-5"></i>
-                </button>
+            <div>
+                <h2 class="text-xl font-bold">جاهز للاستقبال</h2>
+                <p class="text-gray-400 text-sm mt-2">امسح الكود من الجوال للبدء</p>
             </div>
+            <div class="bg-black/50 p-3 rounded-xl border border-white/5 font-mono text-sm break-all" id="my-id">...</div>
         </div>
 
-        <!-- View 3: Sender Dashboard -->
-        <div id="view-send" class="hide flex-col fade-in h-full">
-            <div id="connection-setup" class="flex flex-col gap-4">
-                <p class="text-gray-400 text-sm text-center">Connect to Receiver</p>
-                <div class="flex gap-2">
-                    <input type="text" id="input-peer-id" placeholder="Enter Receiver ID" class="w-full bg-apple-card border border-apple-border rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-apple-blue transition-colors">
-                    <button id="btn-connect" class="bg-apple-blue text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors active:scale-95">
-                        Connect
-                    </button>
-                </div>
-            </div>
-
-            <div id="drop-zone-container" class="hide flex-col items-center justify-center mt-4">
-                <div class="w-full flex items-center justify-between mb-4 px-2">
-                    <div class="flex items-center gap-2">
-                        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        <span class="text-sm text-gray-300">Connected via WebRTC</span>
-                    </div>
-                </div>
-
-                <label id="drop-zone" for="file-input" class="w-full aspect-square max-h-64 border-2 border-dashed border-gray-600 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-all group">
-                    <div class="p-4 bg-gray-800 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="upload-cloud" class="w-8 h-8 text-apple-blue"></i>
-                    </div>
-                    <span class="font-medium text-lg mb-1">Select Video File</span>
-                    <span class="text-sm text-gray-500">or drag and drop here</span>
-                    <span class="text-xs text-gray-600 mt-4">Limitless size • Zero compression</span>
-                    <input type="file" id="file-input" class="hidden" accept="video/*, .mkv, .mp4, .mov, .avi">
-                </label>
-            </div>
-        </div>
-
-        <!-- View 4: Transfer Progress -->
-        <div id="view-transfer" class="hide flex-col justify-center py-4 fade-in">
-            <div class="flex items-center justify-between mb-6">
-                <div class="flex items-center gap-3 truncate pr-4">
-                    <div class="p-2 bg-apple-card rounded-lg shrink-0">
-                        <i data-lucide="file-video" class="w-6 h-6 text-apple-blue"></i>
-                    </div>
-                    <div class="truncate">
-                        <p id="transfer-filename" class="font-medium text-sm truncate">video.mp4</p>
-                        <p id="transfer-filesize" class="text-xs text-gray-500">0 MB</p>
-                    </div>
-                </div>
-                <div class="text-right shrink-0">
-                    <p id="transfer-percentage" class="text-2xl font-semibold text-apple-blue">0%</p>
-                </div>
-            </div>
-
-            <!-- Progress Bar -->
-            <div class="w-full h-3 bg-gray-800 rounded-full overflow-hidden mb-4">
-                <div id="progress-bar" class="h-full bg-apple-blue rounded-full w-0 transition-all duration-300 ease-out"></div>
-            </div>
-
-            <div class="flex justify-between text-xs text-gray-400">
-                <span id="transfer-status">Transferring...</span>
-                <span id="transfer-speed">0 MB/s</span>
+        <!-- Sender View (Connect) -->
+        <div id="view-send" class="hidden space-y-4">
+            <div id="conn-input-area" class="space-y-4">
+                <input type="text" id="target-id" placeholder="أدخل رمز المستقبل هنا" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 focus:outline-none focus:border-blue-500">
+                <button onclick="connectToReceiver()" class="w-full bg-blue-600 p-4 rounded-xl font-bold">اتصال</button>
             </div>
             
-            <!-- Completion Action -->
-            <div id="transfer-complete-action" class="hide mt-8 text-center">
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-500/20 text-green-500 mb-4">
-                    <i data-lucide="check" class="w-6 h-6"></i>
-                </div>
-                <h3 class="font-medium text-lg mb-1">Transfer Complete</h3>
-                <p class="text-sm text-gray-400 mb-4">100% Original Quality Maintained</p>
-                <button id="btn-new-transfer" class="text-apple-blue text-sm hover:underline">Start New Transfer</button>
+            <div id="drop-area" class="hidden border-2 border-dashed border-white/20 rounded-3xl p-10 text-center space-y-4">
+                <i data-lucide="upload-cloud" class="w-12 h-12 mx-auto text-blue-500"></i>
+                <p class="font-bold">تم الاتصال!</p>
+                <input type="file" id="file-input" class="hidden" onchange="handleFile(this.files[0])">
+                <button onclick="document.getElementById('file-input').click()" class="bg-white text-black px-6 py-2 rounded-full font-bold">اختر الفيديو</button>
             </div>
         </div>
 
-    </main>
+        <!-- Progress View -->
+        <div id="view-progress" class="hidden space-y-6 py-4">
+            <div class="flex justify-between items-end">
+                <div>
+                    <div id="file-name" class="font-bold truncate w-40 text-blue-500">Video File</div>
+                    <div id="file-size" class="text-xs text-gray-500">0 MB</div>
+                </div>
+                <div id="percent" class="text-3xl font-black">0%</div>
+            </div>
+            <div class="w-full bg-white/10 h-4 rounded-full overflow-hidden">
+                <div id="bar" class="bg-blue-600 h-full w-0 transition-all"></div>
+            </div>
+            <div id="speed" class="text-center text-xs text-gray-400 font-mono">0 MB/s</div>
+        </div>
+    </div>
 
     <script>
-        // --- Configuration & State ---
-        const CHUNK_SIZE = 256 * 1024; // 256 KB chunks for optimal memory vs speed balance
-        let peer = null;
-        let conn = null;
-        let fileQueue = null;
-        
-        // Receiver State
-        let receivedChunks = [];
-        let receivingMetadata = null;
-        let bytesReceived = 0;
-
-        // Transfer Speed Calculation
-        let lastTime = 0;
-        let lastBytes = 0;
-
-        // --- DOM Elements ---
-        const views = {
-            home: document.getElementById('view-home'),
-            receive: document.getElementById('view-receive'),
-            send: document.getElementById('view-send'),
-            transfer: document.getElementById('view-transfer')
-        };
-        const btnBack = document.getElementById('btn-back');
-        
-        // Initialize Icons
         lucide.createIcons();
+        let peer, conn, fileChunker;
+        const CHUNK_SIZE = 16384 * 4; // 64KB chunks
 
-        // --- UI Navigation ---
-        function showView(viewName) {
-            Object.values(views).forEach(v => v.classList.add('hide'));
-            views[viewName].classList.remove('hide');
-            btnBack.classList.toggle('hide', viewName === 'home');
+        function showView(id) {
+            ['view-start', 'view-receive', 'view-send', 'view-progress'].forEach(v => {
+                document.getElementById(v).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
         }
 
-        btnBack.addEventListener('click', () => {
-            if(conn) {
-                conn.close();
-                conn = null;
-            }
-            if(peer) {
-                peer.destroy();
-                peer = null;
-            }
-            resetTransferState();
-            showView('home');
-            // Remove URL params cleanly
-            window.history.replaceState({}, document.title, window.location.pathname);
-        });
-
-        // --- Core WebRTC Initialization ---
-        function initPeer(onReady) {
-            // Using PeerJS default cloud signaling server. 
-            // In a strict local network without internet, a local PeerServer is required.
-            peer = new Peer({
-                config: {
-                    'iceServers': [
-                        { url: 'stun:stun.l.google.com:19302' },
-                        { url: 'stun:stun1.l.google.com:19302' }
-                    ]
-                },
-                debug: 2
-            });
-
+        // إعداد المستلم (الكمبيوتر)
+        function startReceiver() {
+            showView('view-receive');
+            peer = new Peer();
+            
             peer.on('open', (id) => {
-                console.log('My peer ID is: ' + id);
-                if(onReady) onReady(id);
+                document.getElementById('my-id').innerText = id;
+                document.getElementById('status-text').innerText = "ID: " + id;
+                
+                const joinUrl = window.location.origin + window.location.pathname + "?peer=" + id;
+                new QRCode(document.getElementById("qrcode"), {
+                    text: joinUrl,
+                    width: 180,
+                    height: 180
+                });
             });
 
-            peer.on('error', (err) => {
-                console.error(err);
-                alert('Connection Error: ' + err.type);
+            peer.on('connection', (c) => {
+                conn = c;
+                setupConnection();
             });
         }
 
-        // --- Role: Receiver (PC) ---
-        document.getElementById('btn-role-receive').addEventListener('click', () => {
-            showView('receive');
-            initPeer((id) => {
-                // Setup UI
-                document.getElementById('peer-id-display').innerText = id;
-                document.getElementById('qr-loading').classList.add('hide');
-                
-                // Generate Join URL for QR Code
-                const currentUrl = new URL(window.location.href);
-                currentUrl.searchParams.set('peer', id);
-                
-                document.getElementById('qrcode').innerHTML = '';
-                new QRCode(document.getElementById('qrcode'), {
-                    text: currentUrl.toString(),
-                    width: 200,
-                    height: 200,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
-
-                // Listen for connections
-                peer.on('connection', (connection) => {
-                    conn = connection;
-                    setupReceiverConnection();
-                });
-            });
-        });
-
-        document.getElementById('btn-copy-id').addEventListener('click', () => {
-            const id = document.getElementById('peer-id-display').innerText;
-            navigator.clipboard.writeText(id).then(() => {
-                const icon = document.querySelector('#btn-copy-id i');
-                icon.setAttribute('data-lucide', 'check');
-                icon.classList.add('text-green-500');
-                lucide.createIcons();
-                setTimeout(() => {
-                    icon.setAttribute('data-lucide', 'copy');
-                    icon.classList.remove('text-green-500');
-                    lucide.createIcons();
-                }, 2000);
-            });
-        });
-
-        function setupReceiverConnection() {
-            conn.on('open', () => {
-                console.log('Connected to Sender!');
-                showView('transfer');
-                document.getElementById('transfer-status').innerText = 'Waiting for file...';
-                document.getElementById('transfer-filename').innerText = 'Connected';
-                document.getElementById('transfer-filesize').innerText = 'Ready';
-            });
-
-            conn.on('data', (data) => {
-                // Flow Control Protocol
-                if (data.type === 'metadata') {
-                    // Start of file
-                    receivingMetadata = data;
-                    receivedChunks = [];
-                    bytesReceived = 0;
-                    lastTime = Date.now();
-                    lastBytes = 0;
-                    
-                    updateTransferUI(data.name, data.size, 0);
-                    document.getElementById('transfer-status').innerText = 'Receiving...';
-                    
-                    // Send ACK to request first chunk
-                    conn.send({ type: 'ack' });
-                } 
-                else if (data.type === 'eof') {
-                    // End of file -> Assembly
-                    document.getElementById('transfer-status').innerText = 'Assembling file...';
-                    
-                    const blob = new Blob(receivedChunks, { type: receivingMetadata.fileType });
-                    const downloadUrl = URL.createObjectURL(blob);
-                    
-                    // Trigger download
-                    const a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.download = receivingMetadata.name;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    
-                    // Cleanup memory
-                    setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000); 
-                    receivedChunks = [];
-                    
-                    showTransferComplete();
-                } 
-                else {
-                    // It's an ArrayBuffer chunk
-                    receivedChunks.push(new Blob([data])); // Store as Blob to save RAM
-                    bytesReceived += data.byteLength;
-                    
-                    updateProgress(bytesReceived, receivingMetadata.size);
-                    
-                    // Send ACK to request next chunk (Flow control to prevent buffer bloat)
-                    conn.send({ type: 'ack' });
-                }
-            });
-
-            conn.on('close', () => {
-                console.log('Connection closed');
-                if(bytesReceived > 0 && bytesReceived < receivingMetadata?.size) {
-                    alert('Connection lost during transfer.');
-                    resetTransferState();
-                    showView('receive');
-                }
-            });
-        }
-
-
-        // --- Role: Sender (Mobile) ---
-        function initSenderView(targetId = '') {
-            showView('send');
-            if(targetId) {
-                document.getElementById('input-peer-id').value = targetId;
-            }
-            if(!peer) {
-                initPeer((id) => {
-                    if(targetId) connectToPeer(targetId);
-                });
+        // إعداد المرسل (الجوال)
+        function startSender() {
+            showView('view-send');
+            peer = new Peer();
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('peer')) {
+                document.getElementById('target-id').value = urlParams.get('peer');
+                setTimeout(connectToReceiver, 500);
             }
         }
 
-        document.getElementById('btn-role-send').addEventListener('click', () => initSenderView());
-
-        document.getElementById('btn-connect').addEventListener('click', () => {
-            const targetId = document.getElementById('input-peer-id').value.trim();
-            if(targetId) connectToPeer(targetId);
-        });
-
-        function connectToPeer(targetId) {
-            document.getElementById('btn-connect').innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto"></i>';
-            lucide.createIcons();
-            
+        function connectToReceiver() {
+            const targetId = document.getElementById('target-id').value;
+            if (!targetId) return;
             conn = peer.connect(targetId, { reliable: true });
-            
+            setupConnection();
+        }
+
+        function setupConnection() {
             conn.on('open', () => {
-                document.getElementById('connection-setup').classList.add('hide');
-                document.getElementById('drop-zone-container').classList.remove('hide');
-                document.getElementById('drop-zone-container').classList.add('flex');
+                if (document.getElementById('view-send').classList.contains('hidden')) {
+                    showView('view-progress');
+                    document.getElementById('file-name').innerText = "في انتظار الملف...";
+                } else {
+                    document.getElementById('conn-input-area').classList.add('hidden');
+                    document.getElementById('drop-area').classList.remove('hidden');
+                }
             });
 
-            conn.on('error', err => {
-                alert('Failed to connect. Make sure the ID is correct.');
-                document.getElementById('btn-connect').innerText = 'Connect';
-            });
+            let receivedChunks = [];
+            let metadata = null;
 
-            // Listen for flow control ACKs from receiver
             conn.on('data', (data) => {
-                if(data.type === 'ack' && fileQueue) {
-                    readNextChunk();
+                if (data.type === 'metadata') {
+                    metadata = data;
+                    receivedChunks = [];
+                    showView('view-progress');
+                    document.getElementById('file-name').innerText = data.name;
+                    document.getElementById('file-size').innerText = (data.size / 1024 / 1024).toFixed(2) + " MB";
+                } else if (data.type === 'done') {
+                    const blob = new Blob(receivedChunks);
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = metadata.name;
+                    a.click();
+                    alert("تم استلام الملف بنجاح!");
+                    location.reload();
+                } else {
+                    receivedChunks.push(data);
+                    let currentSize = receivedChunks.length * CHUNK_SIZE;
+                    let p = Math.min(100, Math.round((currentSize / metadata.size) * 100));
+                    document.getElementById('bar').style.width = p + '%';
+                    document.getElementById('percent').innerText = p + '%';
                 }
             });
         }
 
-        // Auto-join if URL has ?peer=
-        window.addEventListener('DOMContentLoaded', () => {
-            const params = new URLSearchParams(window.location.search);
-            const peerId = params.get('peer');
-            if (peerId) {
-                initSenderView(peerId);
-            }
-        });
+        function handleFile(file) {
+            if (!file) return;
+            showView('view-progress');
+            document.getElementById('file-name').innerText = file.name;
+            document.getElementById('file-size').innerText = (file.size / 1024 / 1024).toFixed(2) + " MB";
 
-        // --- File Handling & Chunking (Sender) ---
-        const fileInput = document.getElementById('file-input');
-        const dropZone = document.getElementById('drop-zone');
+            conn.send({ type: 'metadata', name: file.name, size: file.size });
 
-        // Click to select
-        fileInput.addEventListener('change', (e) => {
-            if(e.target.files.length > 0) startFileTransfer(e.target.files[0]);
-        });
+            let offset = 0;
+            const reader = new FileReader();
 
-        // Drag & Drop events
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('drag-active');
-        });
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-active');
-        });
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-active');
-            if(e.dataTransfer.files.length > 0) {
-                startFileTransfer(e.dataTransfer.files[0]);
-            }
-        });
-
-        function startFileTransfer(file) {
-            showView('transfer');
-            updateTransferUI(file.name, file.size, 0);
-            document.getElementById('transfer-status').innerText = 'Sending...';
-            
-            fileQueue = {
-                file: file,
-                offset: 0,
-                reader: new FileReader()
-            };
-
-            lastTime = Date.now();
-            lastBytes = 0;
-
-            fileQueue.reader.onload = (e) => {
-                // Send the raw ArrayBuffer chunk
+            reader.onload = (e) => {
                 conn.send(e.target.result);
-                fileQueue.offset += e.target.result.byteLength;
-                
-                updateProgress(fileQueue.offset, fileQueue.file.size);
-                
-                if (fileQueue.offset >= fileQueue.file.size) {
-                    // Finished reading
-                    conn.send({ type: 'eof' });
-                    showTransferComplete();
-                    fileQueue = null; // Clean up
+                offset += e.target.result.byteLength;
+                let p = Math.min(100, Math.round((offset / file.size) * 100));
+                document.getElementById('bar').style.width = p + '%';
+                document.getElementById('percent').innerText = p + '%';
+
+                if (offset < file.size) {
+                    readNext();
+                } else {
+                    setTimeout(() => {
+                        conn.send({ type: 'done' });
+                        alert("تم الإرسال بنجاح!");
+                        location.reload();
+                    }, 500);
                 }
-                // Note: We do NOT immediately call readNextChunk() here.
-                // We wait for the 'ack' event from the receiver to prevent buffer bloat.
             };
 
-            // Send Metadata to initiate
-            conn.send({
-                type: 'metadata',
-                name: file.name,
-                size: file.size,
-                fileType: file.type || 'application/octet-stream'
-            });
-            // First chunk will be requested by receiver's ACK
-        }
-
-        function readNextChunk() {
-            if(!fileQueue) return;
-            const slice = fileQueue.file.slice(fileQueue.offset, fileQueue.offset + CHUNK_SIZE);
-            fileQueue.reader.readAsArrayBuffer(slice);
-        }
-
-        // --- UI Updaters ---
-        function formatBytes(bytes, decimals = 2) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const dm = decimals < 0 ? 0 : decimals;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-        }
-
-        function updateTransferUI(name, size, current) {
-            document.getElementById('transfer-filename').innerText = name;
-            document.getElementById('transfer-filesize').innerText = formatBytes(size);
-            updateProgress(current, size);
-        }
-
-        function updateProgress(current, total) {
-            const percent = total === 0 ? 0 : Math.floor((current / total) * 100);
-            document.getElementById('progress-bar').style.width = percent + '%';
-            document.getElementById('transfer-percentage').innerText = percent + '%';
-
-            // Calculate Speed
-            const now = Date.now();
-            if(now - lastTime > 1000) { // Update speed every second
-                const diffBytes = current - lastBytes;
-                const speedPerSec = diffBytes / ((now - lastTime) / 1000);
-                document.getElementById('transfer-speed').innerText = formatBytes(speedPerSec) + '/s';
-                lastTime = now;
-                lastBytes = current;
+            function readNext() {
+                const slice = file.slice(offset, offset + CHUNK_SIZE);
+                reader.readAsArrayBuffer(slice);
             }
+            readNext();
         }
-
-        function showTransferComplete() {
-            document.getElementById('transfer-status').innerText = 'Complete';
-            document.getElementById('transfer-speed').innerText = '';
-            document.getElementById('progress-bar').style.width = '100%';
-            document.getElementById('transfer-percentage').innerText = '100%';
-            
-            document.getElementById('transfer-complete-action').classList.remove('hide');
-        }
-
-        function resetTransferState() {
-            document.getElementById('transfer-complete-action').classList.add('hide');
-            document.getElementById('progress-bar').style.width = '0%';
-            document.getElementById('transfer-percentage').innerText = '0%';
-            receivedChunks = [];
-            fileQueue = null;
-        }
-
-        document.getElementById('btn-new-transfer').addEventListener('click', () => {
-            resetTransferState();
-            // Go back to drop zone or ready state based on role
-            if(document.getElementById('drop-zone-container').classList.contains('hide') === false) {
-                showView('send');
-            } else {
-                showView('receive');
-            }
-        });
-
     </script>
 </body>
 </html>
