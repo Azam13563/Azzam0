@@ -3,214 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ناقل الملفات السريع</title>
+    <title>ناقل الملفات المستقر</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { background-color: #0b0b0c; color: #ffffff; font-family: system-ui, -apple-system, sans-serif; }
-        .apple-card { background: #1c1c1e; border: 1px solid #38383a; border-radius: 24px; }
-        .btn-blue { background: #007aff; transition: all 0.2s; }
-        .btn-blue:active { transform: scale(0.95); }
+        body { background-color: #09090b; color: #fafafa; font-family: system-ui, sans-serif; }
+        .card { background: #18181b; border: 1px solid #27272a; border-radius: 20px; }
         .hidden { display: none !important; }
-        #qrcode img { margin: 0 auto; border-radius: 12px; padding: 10px; background: white; }
+        #qrcode img { margin: 0 auto; padding: 10px; background: white; border-radius: 12px; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
-    <div class="w-full max-w-md apple-card p-8 shadow-2xl">
-        <!-- Logo -->
-        <div class="flex items-center gap-3 mb-10 justify-center">
-            <div class="bg-blue-500 p-2 rounded-xl shadow-lg shadow-blue-500/20">
-                <i data-lucide="share-2" class="w-6 h-6 text-white"></i>
-            </div>
-            <h1 class="text-2xl font-bold tracking-tight">AirDrop Web</h1>
+    <div class="w-full max-w-md card p-8 shadow-2xl">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-blue-500">AirDrop Web Stable</h1>
+            <p class="text-gray-500 text-sm">نقل الملفات بجودة أصلية</p>
         </div>
 
-        <!-- الخطوة الأولى: اختيار الجهاز -->
-        <div id="view-step1" class="space-y-4">
-            <p class="text-center text-gray-400 mb-6">اختر نوع هذا الجهاز</p>
-            <button onclick="initReceiver()" class="w-full flex items-center gap-4 p-5 rounded-2xl bg-[#2c2c2e] hover:bg-[#3a3a3c] transition-all border border-white/5">
-                <i data-lucide="monitor" class="w-8 h-8 text-blue-400"></i>
-                <div class="text-right">
-                    <div class="font-bold text-lg">هذا جهاز الكمبيوتر</div>
-                    <div class="text-sm text-gray-400 text-right">لاستقبال الملفات</div>
-                </div>
-            </button>
-            <button onclick="initSender()" class="w-full flex items-center gap-4 p-5 rounded-2xl bg-[#2c2c2e] hover:bg-[#3a3a3c] transition-all border border-white/5">
-                <i data-lucide="smartphone" class="w-8 h-8 text-green-400"></i>
-                <div class="text-right">
-                    <div class="font-bold text-lg">هذا هو الجوال</div>
-                    <div class="text-sm text-gray-400 text-right">لإرسال الملفات</div>
-                </div>
-            </button>
+        <!-- الخطوة 1 -->
+        <div id="view-step1" class="space-y-4 text-center">
+            <button onclick="initPC()" class="w-full p-4 bg-blue-600 rounded-xl font-bold">هذا هو الكمبيوتر (المستقبل)</button>
+            <button onclick="initMobile()" class="w-full p-4 bg-zinc-800 rounded-xl font-bold">هذا هو التابلت/الجوال (المرسل)</button>
         </div>
 
-        <!-- شاشة الكمبيوتر (توليد الرمز) -->
-        <div id="view-receiver" class="hidden text-center space-y-6">
-            <div class="relative inline-block">
-                <div id="qrcode" class="min-h-[180px] flex items-center justify-center">
-                    <!-- سيظهر الكود هنا -->
-                    <div id="loader" class="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-500"></div>
-                </div>
+        <!-- شاشة المستقبل -->
+        <div id="view-pc" class="hidden text-center space-y-6">
+            <div id="qrcode" class="flex justify-center min-h-[180px]"></div>
+            <div class="p-3 bg-black/20 rounded-lg border border-white/5">
+                <p class="text-xs text-gray-500">الرمز الخاص بك:</p>
+                <p id="pc-id" class="font-mono text-lg text-blue-400">جاري التحميل...</p>
             </div>
-            <div id="id-box" class="hidden">
-                <p class="text-sm text-gray-400 mb-2">رمز الاتصال الخاص بك:</p>
-                <div id="peer-id" class="bg-black/40 p-3 rounded-xl font-mono text-blue-400 border border-blue-500/20 text-lg">...</div>
+            <div id="pc-status" class="text-sm text-yellow-500 animate-pulse">في انتظار الاتصال...</div>
+            <div id="download-zone" class="hidden p-4 bg-green-900/20 border border-green-500/50 rounded-xl">
+                <p class="text-green-400 mb-2">تم استلام الملف!</p>
+                <a id="download-link" class="block w-full py-2 bg-green-600 rounded-lg font-bold">اضغط هنا للحفظ</a>
             </div>
-            <p class="text-sm text-gray-500 px-4" id="instruction">جاري الاتصال بالخادم العالمي لتوليد رمزك...</p>
         </div>
 
-        <!-- شاشة الجوال (الاتصال) -->
-        <div id="view-sender" class="hidden space-y-6">
-            <div id="connection-input" class="space-y-4">
-                <p class="text-center text-gray-400">أدخل الرمز الظاهر على الكمبيوتر</p>
-                <input type="text" id="target-id" placeholder="مثال: 5e82-..." class="w-full bg-[#2c2c2e] border border-white/10 rounded-xl p-4 text-center text-xl focus:outline-none focus:border-blue-500">
-                <button onclick="connectToPC()" id="connect-btn" class="w-full btn-blue p-4 rounded-xl font-bold text-lg">اتصال الآن</button>
-            </div>
-            <div id="upload-area" class="hidden text-center space-y-6 animate-pulse">
-                <div class="py-12 border-2 border-dashed border-blue-500/30 rounded-3xl">
-                    <i data-lucide="check-circle" class="w-16 h-16 mx-auto text-green-500 mb-4"></i>
-                    <p class="text-xl font-bold italic">تم الاتصال بنجاح!</p>
-                    <input type="file" id="file-input" class="hidden" onchange="sendFile(this.files[0])">
-                    <button onclick="document.getElementById('file-input').click()" class="mt-6 bg-white text-black px-10 py-3 rounded-full font-bold shadow-xl">اختر الفيديو</button>
-                </div>
+        <!-- شاشة المرسل -->
+        <div id="view-mobile" class="hidden space-y-4 text-center">
+            <input type="text" id="target-id" placeholder="أدخل رمز الكمبيوتر هنا" class="w-full p-4 bg-zinc-900 border border-zinc-700 rounded-xl text-center">
+            <button id="connect-btn" onclick="connectToPC()" class="w-full p-4 bg-blue-600 rounded-xl font-bold">اتصال</button>
+            
+            <div id="send-zone" class="hidden py-8 border-2 border-dashed border-zinc-700 rounded-xl">
+                <p class="text-green-500 mb-4 font-bold">متصل بالكمبيوتر ✅</p>
+                <input type="file" id="file-input" class="hidden" onchange="startSending(this.files[0])">
+                <button onclick="document.getElementById('file-input').click()" class="px-8 py-3 bg-white text-black rounded-full font-bold">اختر المقطع</button>
             </div>
         </div>
 
         <!-- شاشة التقدم -->
-        <div id="view-progress" class="hidden space-y-6">
-            <div class="flex justify-between items-end">
-                <div class="text-right">
-                    <p id="file-name" class="font-bold text-blue-400 truncate w-40">يتم النقل...</p>
-                    <p id="status-text" class="text-xs text-gray-500 italic">برجاء عدم إغلاق الصفحة</p>
-                </div>
-                <div id="progress-percent" class="text-4xl font-black">0%</div>
+        <div id="view-progress" class="hidden space-y-4">
+            <div class="flex justify-between font-bold">
+                <span id="prog-label">جاري النقل...</span>
+                <span id="prog-percent">0%</span>
             </div>
-            <div class="w-full bg-white/5 h-4 rounded-full overflow-hidden border border-white/5">
-                <div id="progress-bar" class="bg-blue-500 h-full w-0 transition-all duration-300"></div>
+            <div class="w-full bg-zinc-800 h-4 rounded-full overflow-hidden">
+                <div id="prog-bar" class="bg-blue-500 h-full w-0 transition-all"></div>
             </div>
         </div>
     </div>
 
     <script>
-        lucide.createIcons();
-        let peer, conn;
-        const CHUNK_SIZE = 64000; // حجم القطعة الواحدة
+        let peer, conn, receivedChunks = [], meta = null;
+        const CHUNK_SIZE = 16384 * 2; // 32KB
 
         function show(id) {
-            ['view-step1', 'view-receiver', 'view-sender', 'view-progress'].forEach(v => {
-                document.getElementById(v).classList.add('hidden');
-            });
+            ['view-step1', 'view-pc', 'view-mobile', 'view-progress'].forEach(v => document.getElementById(v).classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
         }
 
-        // تشغيل الكمبيوتر
-        function initReceiver() {
-            show('view-receiver');
-            peer = new Peer({
-                config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
+        function initPC() {
+            show('view-pc');
+            peer = new Peer();
+            peer.on('open', id => {
+                document.getElementById('pc-id').innerText = id;
+                new QRCode(document.getElementById("qrcode"), { text: window.location.href + "?id=" + id, width: 180, height: 180 });
             });
-
-            peer.on('open', (id) => {
-                document.getElementById('loader').classList.add('hidden');
-                document.getElementById('id-box').classList.remove('hidden');
-                document.getElementById('peer-id').innerText = id;
-                document.getElementById('instruction').innerText = "افتح نفس الموقع من الجوال وأدخل الرمز أعلاه";
-                
-                // توليد QR Code
-                const link = window.location.href.split('?')[0] + "?join=" + id;
-                new QRCode(document.getElementById("qrcode"), { text: link, width: 180, height: 180 });
-            });
-
-            peer.on('connection', (c) => {
+            peer.on('connection', c => {
                 conn = c;
-                handleConnection();
-            });
-
-            peer.on('error', (err) => {
-                alert("خطأ في الاتصال: " + err.type);
-                location.reload();
+                document.getElementById('pc-status').innerText = "متصل بالمرسل، في انتظار الملف...";
+                setupConn();
             });
         }
 
-        // تشغيل الجوال
-        function initSender() {
-            show('view-sender');
-            peer = new Peer({
-                config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
-            });
-
-            const params = new URLSearchParams(window.location.search);
-            if (params.has('join')) {
-                document.getElementById('target-id').value = params.get('join');
+        function initMobile() {
+            show('view-mobile');
+            peer = new Peer();
+            const urlParams = new URLSearchParams(window.location.search);
+            if(urlParams.has('id')) {
+                document.getElementById('target-id').value = urlParams.get('id');
                 setTimeout(connectToPC, 1000);
             }
         }
 
         function connectToPC() {
-            const tid = document.getElementById('target-id').value;
-            if (!tid) return;
-            document.getElementById('connect-btn').innerText = "جاري الربط...";
-            conn = peer.connect(tid, { reliable: true });
-            handleConnection();
+            const id = document.getElementById('target-id').value;
+            if(!id) return;
+            conn = peer.connect(id, { reliable: true });
+            setupConn();
         }
 
-        function handleConnection() {
+        function setupConn() {
             conn.on('open', () => {
-                show('view-sender');
-                document.getElementById('connection-input').classList.add('hidden');
-                document.getElementById('upload-area').classList.remove('hidden');
-                // إذا كان مستقبل
-                if(document.getElementById('view-receiver').classList.contains('hidden') === false) {
-                    show('view-progress');
+                if(document.getElementById('view-mobile').classList.contains('hidden') === false) {
+                    document.getElementById('connect-btn').classList.add('hidden');
+                    document.getElementById('send-zone').classList.remove('hidden');
                 }
             });
 
-            let chunks = [];
-            let meta = null;
-
-            conn.on('data', (data) => {
-                if (data.type === 'meta') {
+            conn.on('data', data => {
+                if(data.type === 'start') {
                     meta = data;
-                    chunks = [];
+                    receivedChunks = [];
                     show('view-progress');
-                    document.getElementById('file-name').innerText = data.name;
+                    document.getElementById('prog-label').innerText = "يتم الاستقبال...";
                 } else if (data.type === 'end') {
-                    const blob = new Blob(chunks);
+                    const blob = new Blob(receivedChunks);
                     const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = meta.name;
-                    a.click();
-                    alert("وصل الملف بنجاح!");
-                    location.reload();
+                    show('view-pc');
+                    document.getElementById('pc-status').innerText = "اكتمل الاستلام!";
+                    document.getElementById('download-zone').classList.remove('hidden');
+                    const dl = document.getElementById('download-link');
+                    dl.href = url;
+                    dl.download = meta.name;
+                    // محاولة تحميل تلقائي
+                    dl.click();
                 } else {
-                    chunks.push(data);
-                    let progress = Math.min(100, Math.round((chunks.length * CHUNK_SIZE / meta.size) * 100));
-                    document.getElementById('progress-bar').style.width = progress + '%';
-                    document.getElementById('progress-percent').innerText = progress + '%';
+                    receivedChunks.push(data);
+                    let p = Math.min(100, Math.round((receivedChunks.length * CHUNK_SIZE / meta.size) * 100));
+                    document.getElementById('prog-bar').style.width = p + '%';
+                    document.getElementById('prog-percent').innerText = p + '%';
                 }
             });
         }
 
-        function sendFile(file) {
-            if (!file) return;
+        function startSending(file) {
+            if(!file) return;
             show('view-progress');
-            document.getElementById('file-name').innerText = file.name;
-            conn.send({ type: 'meta', name: file.name, size: file.size });
+            document.getElementById('prog-label').innerText = "يتم الإرسال الآن...";
+            conn.send({ type: 'start', name: file.name, size: file.size });
 
             let offset = 0;
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = e => {
                 conn.send(e.target.result);
                 offset += e.target.result.byteLength;
                 let p = Math.min(100, Math.round((offset / file.size) * 100));
-                document.getElementById('progress-bar').style.width = p + '%';
-                document.getElementById('progress-percent').innerText = p + '%';
-                if (offset < file.size) { readNext(); } 
-                else { conn.send({ type: 'end' }); alert("تم الإرسال!"); location.reload(); }
+                document.getElementById('prog-bar').style.width = p + '%';
+                document.getElementById('prog-percent').innerText = p + '%';
+                if(offset < file.size) readNext();
+                else { conn.send({ type: 'end' }); alert("تم إرسال الملف بالكامل!"); location.reload(); }
             };
 
             function readNext() {
